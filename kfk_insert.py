@@ -29,27 +29,30 @@ producer = KafkaProducer(bootstrap_servers=['localhost:9092'],
                          value_serializer=lambda x: dumps(x).encode('utf-8'),
                          compression_type='gzip')
 topic_name_1 = 'ark-topic-1'
+insert_count_1 = 5
 topic_name_2 = 'ark-topic-2'
+insert_count_2 = 3
+topic_name_3 = 'ark-topic-3'
+insert_count_3 = 20
+
+def kfk_insert(topic, insert_count):
+    for _ in range(insert_count):
+        random_data = getRandomValue()
+        producer.send(topic=topic, value=random_data)
+        # future = producer.send(topic=topic, value=random_data)
+        # message_metadata = future.get(timeout=10)
+        # print(f"""[+] message_metadata: {message_metadata.topic}, partition: {message_metadata.partition}, offset: {message_metadata.offset}""")
+
+    print(f'{topic = } finish insert')
 
 k = 0
 while k < 20:
     k += 1
-    random_data_1 = getRandomValue()
-    random_data_2 = getRandomValue()
     print(f"step: {k}")
-    # print(random_data_1)
     try:
-        future_1 = producer.send(topic=topic_name_1, value=random_data_1)
-        message_metadata_1 = future_1.get(timeout=10)
-
-        print(
-            f"""[+] message_metadata: {message_metadata_1.topic}, partition: {message_metadata_1.partition}, offset: {message_metadata_1.offset}""")
-
-        future_2 = producer.send(topic=topic_name_2, value=random_data_2)
-        message_metadata_2 = future_2.get(timeout=10)
-
-        print(
-            f"""[+] message_metadata: {message_metadata_2.topic}, partition: {message_metadata_2.partition}, offset: {message_metadata_2.offset}""")
+        kfk_insert(topic_name_1, insert_count_1)
+        kfk_insert(topic_name_2, insert_count_2)
+        kfk_insert(topic_name_3, insert_count_3)
     except Exception as e:
         print(f">>> Error: {e}")
     finally:
