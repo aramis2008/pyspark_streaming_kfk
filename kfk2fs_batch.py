@@ -31,8 +31,8 @@ spark = (SparkSession
          .getOrCreate())
 spark.sparkContext.setLogLevel('WARN')
 
-source = (spark
-          .readStream
+df = (spark
+          .read
           .format('kafka')
           .option('kafka.bootstrap.servers', 'localhost:9092')
           .option('subscribe', 'ark-topic-1,ark-topic-2,ark-topic-3')
@@ -40,8 +40,24 @@ source = (spark
           .option('checkpointLocation', '/home/aramis2008/sparkstreamingFromKafka/checkpoint')
           .load())
 
-(source
-     .writeStream
-     .foreachBatch(proccess_batch)
-     .start()
-     .awaitTermination())
+(df
+    .filter("topic = 'ark-topic-1'")
+    .write
+    .format('json')
+    .mode('append')
+    .option('encoding', 'UTF-8')
+    .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-1'))
+(df
+    .filter("topic = 'ark-topic-2'")
+    .write
+    .format('json')
+    .mode('append')
+    .option('encoding', 'UTF-8')
+    .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-2'))
+(df
+    .filter("topic = 'ark-topic-3'")
+    .write
+    .format('json')
+    .mode('append')
+    .option('encoding', 'UTF-8')
+    .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-3'))
