@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession, DataFrame
 
-def proccess_batch(df: DataFrame, batch_id: int):
+def proccess_batch_1(df: DataFrame, batch_id: int):
     print(df.count(), batch_id)
     (df
      .filter("topic = 'ark-topic-1'")
@@ -9,6 +9,9 @@ def proccess_batch(df: DataFrame, batch_id: int):
      .mode('append')
      .option('encoding', 'UTF-8')
      .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-1'))
+
+def proccess_batch_2(df: DataFrame, batch_id: int):
+    print(df.count(), batch_id)
     (df
      .filter("topic = 'ark-topic-2'")
      .write
@@ -16,13 +19,7 @@ def proccess_batch(df: DataFrame, batch_id: int):
      .mode('append')
      .option('encoding', 'UTF-8')
      .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-2'))
-    (df
-     .filter("topic = 'ark-topic-3'")
-     .write
-     .format('json')
-     .mode('append')
-     .option('encoding', 'UTF-8')
-     .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-3'))
+
 
 spark = (SparkSession
          .builder
@@ -41,15 +38,25 @@ df = (spark
           .load())
 print('TOLCH ---- TOLCH')
 
-df2 = (df.writeStream
-     .foreachBatch(proccess_batch)
+# Рабочий вариант двух стримов паралельно
+df_topic1 = (df.writeStream
+     .foreachBatch(proccess_batch_1)
      .start())
 
+df_topic2 = (df.writeStream
+     .foreachBatch(proccess_batch_2)
+     .start())
+
+df_topic1.awaitTermination()
+df_topic2.awaitTermination()
 # Все вычитает и закончится если даже поступают новые.
 # Без нижних команды не происходит процесс забора, просто остановка.
 # stop() - как-будто ни на что не влияет
 # загружает все заново при каждом запуске.
-df2.processAllAvailable()
-df2.stop()
+# df2 = (df.writeStream
+#      .foreachBatch(proccess_batch)
+#      .start())
+# df2.processAllAvailable()
+# df2.stop()
 
 print('NASTCH ---- NASTCH')
