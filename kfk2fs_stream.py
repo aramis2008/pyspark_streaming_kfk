@@ -39,8 +39,17 @@ df = (spark
           .option("startingOffsets", "earliest")
           .option('checkpointLocation', '/home/aramis2008/sparkstreamingFromKafka/checkpoint')
           .load())
+print('TOLCH ---- TOLCH')
 
-(df.writeStream
+df2 = (df.writeStream
      .foreachBatch(proccess_batch)
-     .start()
-     .awaitTermination())
+     .start())
+
+# Все вычитает и закончится если даже поступают новые.
+# Без нижних команды не происходит процесс забора, просто остановка.
+# stop() - как-будто ни на что не влияет
+# загружает все заново при каждом запуске.
+df2.processAllAvailable()
+df2.stop()
+
+print('NASTCH ---- NASTCH')

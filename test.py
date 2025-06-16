@@ -1,6 +1,14 @@
-topic_name_1 = 'ark-topic-1'
-topic_name_2 = 'ark-topic-2'
-topic_name_3 = 'ark-topic-3'
+import psycopg
+from psycopg.sql import Identifier, SQL
 
-startingOffsets = f"""{{"{topic_name_1}":{{"0":370}},"{topic_name_2}":{{"0":220}},"{topic_name_3}":{{"0":1550}} }}"""
-print(startingOffsets)
+columns = ['a1', 'b2']
+psy_cols = SQL(', ').join([Identifier(column) for column in columns])
+psy_values = SQL(', ').join([SQL("%s")] * len(columns))
+
+insert_query = SQL("INSERT INTO {table} ({columns_s}) VALUES ({values});").format(
+    table=Identifier("sdsd.tefv"),
+    columns_s=psy_cols,
+    values=psy_values
+)
+print(insert_query.as_string())
+print(insert_query)
