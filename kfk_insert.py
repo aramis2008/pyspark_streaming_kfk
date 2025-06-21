@@ -29,11 +29,11 @@ producer = KafkaProducer(bootstrap_servers=['localhost:9092'],
                          value_serializer=lambda x: dumps(x).encode('utf-8'),
                          compression_type='gzip')
 topic_name_1 = 'ark-topic-1'
-insert_count_1 = 5
+insert_count_1 = 4
 topic_name_2 = 'ark-topic-2'
 insert_count_2 = 3
 topic_name_3 = 'ark-topic-3'
-insert_count_3 = 20
+insert_count_3 = 2
 
 def kfk_insert(topic, insert_count):
     for _ in range(insert_count):
@@ -57,6 +57,6 @@ while k < 20:
         print(f">>> Error: {e}")
     finally:
         producer.flush()
-    sleep(2)
+    sleep(0.2)
 
 producer.close()
