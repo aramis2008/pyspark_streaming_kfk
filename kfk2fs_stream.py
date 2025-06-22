@@ -2,6 +2,8 @@ from time import sleep
 from threading import Thread
 from pyspark.sql import SparkSession, DataFrame
 
+global_streams = [None, None]
+
 def proccess_batch_1(df: DataFrame, batch_id: int):
     print(df.count(), batch_id)
     (df
@@ -12,6 +14,7 @@ def proccess_batch_1(df: DataFrame, batch_id: int):
      .option('encoding', 'UTF-8')
      .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-1'))
 
+
 def proccess_batch_2(df: DataFrame, batch_id: int):
     print(df.count(), batch_id)
     (df
@@ -21,6 +24,8 @@ def proccess_batch_2(df: DataFrame, batch_id: int):
      .mode('append')
      .option('encoding', 'UTF-8')
      .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-2'))
+    # work well, другой поток не останавливается. raise Exception("test session")
+
 
 def kafka_write(process_type):
     print(f'TOLCH --{process_type = }-- TOLCH')
@@ -31,35 +36,52 @@ def kafka_write(process_type):
     else:
         raise Exception("bad type")
 
-    #.appName('quickstart-streaming-kafka')
     spark = (SparkSession
              .builder
+             .appName('quickstart-streaming-kafka-' + process_type)
              .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1")
              .getOrCreate())
     spark.sparkContext.setLogLevel('WARN')
 
     df = (spark
-              .readStream
-              .format('kafka')
-              .option('kafka.bootstrap.servers', 'localhost:9092')
-              .option('subscribe', 'ark-topic-1,ark-topic-2,ark-topic-3')
-              .option("startingOffsets", "earliest")
-              .option('checkpointLocation', '/home/aramis2008/sparkstreamingFromKafka/checkpoint')
-              .load())
+          .readStream
+          .format('kafka')
+          .option('kafka.bootstrap.servers', 'localhost:9092')
+          .option('subscribe', 'ark-topic-1,ark-topic-2,ark-topic-3')
+          .option("startingOffsets", "earliest")
+          .option('checkpointLocation', '/home/aramis2008/sparkstreamingFromKafka/checkpoint')
+          .load())
 
     df_topic = (df.writeStream
-         .foreachBatch(process_func)
-         .start())
+                .foreachBatch(process_func)
+                .start())
+
+    if process_type == "1":
+        global_streams[0] = df_topic
+    elif process_type == "2":
+        global_streams[1] = df_topic
 
     df_topic.awaitTermination()
+    # следующие команды не запускаются
+    # print('here work?')
+    # if process_type == "2":
+    #     print('sleep 20 sec')
+    #     sleep(20)
+    #     df_topic.stop()
+
 
 print('start 1 func')
 thread1 = Thread(target=kafka_write, args='1')
 thread1.start()
-print('sleep 70 sec')
-sleep(70)
+print('sleep 40 sec')
+sleep(40)
 print('start 2 func')
 thread2 = Thread(target=kafka_write, args='2')
 thread2.start()
+print('sleep 40 sec')
+sleep(40)
+print('stop 2 stream')
+# work well
+global_streams[1].stop()
 
 print('NASTCH ---- NASTCH')
