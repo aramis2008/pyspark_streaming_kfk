@@ -1,8 +1,8 @@
 from time import sleep
 from threading import Thread
 from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql.functions import  col, from_json, lit, schema_of_json
 
-global_streams = [None, None]
 
 def proccess_batch_1(df: DataFrame, batch_id: int):
     print(df.count(), batch_id)
@@ -24,7 +24,21 @@ def proccess_batch_2(df: DataFrame, batch_id: int):
      .mode('append')
      .option('encoding', 'UTF-8')
      .save('/home/aramis2008/sparkstreamingFromKafka/outputStreaming2/topic-2'))
-    # work well, другой поток не останавливается. raise Exception("test session")
+    # work well, другой поток не останавливается.
+    # raise Exception("test session")
+
+def proccess_batch_value_parse(df: DataFrame, batch_id: int):
+    df_decode = df \
+        .filter("topic = 'ark-topic-1'") \
+        .select(col('value').cast('string'))
+        #.select(decode(col('value'), "UTF-8").alias('value'))
+
+    df_decode.show(10, truncate = False)
+
+    schema_t = schema_of_json(lit(df_decode.select('value').first().value))
+    df_full = df_decode.withColumn('value', from_json(col('value'), schema_t)).select(col('value.*'))
+    df_full.show(10, truncate = False)
+    df_full.printSchema()
 
 
 def kafka_write(process_type):
@@ -38,7 +52,7 @@ def kafka_write(process_type):
 
     spark = (SparkSession
              .builder
-             .appName('quickstart-streaming-kafka-' + process_type)
+             .appName('quickstart-streaming-kafka-0')
              .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1")
              .getOrCreate())
     spark.sparkContext.setLogLevel('WARN')
@@ -53,13 +67,9 @@ def kafka_write(process_type):
           .load())
 
     df_topic = (df.writeStream
+                .queryName(process_type)
                 .foreachBatch(process_func)
                 .start())
-
-    if process_type == "1":
-        global_streams[0] = df_topic
-    elif process_type == "2":
-        global_streams[1] = df_topic
 
     df_topic.awaitTermination()
     # следующие команды не запускаются
@@ -73,15 +83,19 @@ def kafka_write(process_type):
 print('start 1 func')
 thread1 = Thread(target=kafka_write, args='1')
 thread1.start()
-print('sleep 40 sec')
-sleep(40)
+print('sleep 25 sec')
+sleep(25)
 print('start 2 func')
 thread2 = Thread(target=kafka_write, args='2')
 thread2.start()
-print('sleep 40 sec')
-sleep(40)
-print('stop 2 stream')
+
 # work well
-global_streams[1].stop()
+print('sleep 15 sec')
+sleep(15)
+spark = SparkSession.builder.getOrCreate()
+print(spark.streams.active[0].name)
+print(spark.streams.active[1].name)
+print('stop 2 stream')
+[streamkfk.stop() for streamkfk in spark.streams.active if streamkfk.name == '2']
 
 print('NASTCH ---- NASTCH')
