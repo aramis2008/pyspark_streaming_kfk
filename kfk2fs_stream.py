@@ -72,12 +72,8 @@ def kafka_write(process_type):
                 .start())
 
     df_topic.awaitTermination()
-    # следующие команды не запускаются
-    # print('here work?')
-    # if process_type == "2":
-    #     print('sleep 20 sec')
-    #     sleep(20)
-    #     df_topic.stop()
+    # следующие команды не запускаются, пока поток не прервется ( streamkfk.stop() )
+    print(f'stoped {process_type = }')
 
 
 print('start 1 func')
