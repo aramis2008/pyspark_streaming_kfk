@@ -3,6 +3,7 @@ from threading import Thread
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import  col, from_json, lit, schema_of_json
 
+# тест паралельных потоков и спарк-стримов, и их остановка
 
 def proccess_batch_1(df: DataFrame, batch_id: int):
     print(df.count(), batch_id)
