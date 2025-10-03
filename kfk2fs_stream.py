@@ -1,7 +1,7 @@
 from time import sleep
 from threading import Thread
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import  col, from_json, lit, schema_of_json
+from pyspark.sql.functions import  col, from_json, lit, schema_of_json, decode
 
 # тест паралельных потоков и спарк-стримов, и их остановка
 
@@ -28,16 +28,16 @@ def proccess_batch_2(df: DataFrame, batch_id: int):
     # work well, другой поток не останавливается.
     # raise Exception("test session")
 
-def proccess_batch_value_parse(df: DataFrame, batch_id: int):
+def proccess_batch_value_parse_complex_json(df: DataFrame, batch_id: int):
     df_decode = df \
-        .filter("topic = 'ark-topic-1'") \
-        .select(col('value').cast('string'))
-        #.select(decode(col('value'), "UTF-8").alias('value'))
+        .filter("topic = 'ark-topic-complexjson.pydict'") \
+        .select(decode(col('value'), "UTF-8").alias('value'))
+        #.select(col('value').cast('string'))
 
     df_decode.show(10, truncate = False)
 
     schema_t = schema_of_json(lit(df_decode.select('value').first().value))
-    df_full = df_decode.withColumn('value', from_json(col('value'), schema_t)).select(col('value.*'))
+    df_full = df_decode.withColumn('value', from_json(col('value'), schema_t)).select(col('value.after.*'))
     df_full.show(10, truncate = False)
     df_full.printSchema()
 
@@ -48,6 +48,8 @@ def kafka_write(process_type):
         process_func = proccess_batch_1
     elif process_type == "2":
         process_func = proccess_batch_2
+    elif process_type == "show":
+        process_func = proccess_batch_value_parse_complex_json
     else:
         raise Exception("bad type")
 
@@ -62,7 +64,7 @@ def kafka_write(process_type):
           .readStream
           .format('kafka')
           .option('kafka.bootstrap.servers', 'localhost:9092')
-          .option('subscribe', 'ark-topic-1,ark-topic-2,ark-topic-3')
+          .option('subscribe', 'ark-topic-1,ark-topic-2,ark-topic-3,ark-topic-complexjson.pydict')
           .option("startingOffsets", "earliest")
           .option('checkpointLocation', '/home/aramis2008/sparkstreamingFromKafka/checkpoint')
           .load())
@@ -78,21 +80,24 @@ def kafka_write(process_type):
 
 
 print('start 1 func')
-thread1 = Thread(target=kafka_write, args='1')
+thread1 = Thread(target=kafka_write, args=('show',))
 thread1.start()
-print('sleep 25 sec')
-sleep(25)
-print('start 2 func')
-thread2 = Thread(target=kafka_write, args='2')
-thread2.start()
 
-# work well
-print('sleep 15 sec')
-sleep(15)
-spark = SparkSession.builder.getOrCreate()
-print(spark.streams.active[0].name)
-print(spark.streams.active[1].name)
-print('stop 2 stream')
-[streamkfk.stop() for streamkfk in spark.streams.active if streamkfk.name == '2']
 
-print('NASTCH ---- NASTCH')
+
+# print('sleep 25 sec')
+# sleep(25)
+# print('start 2 func')
+# thread2 = Thread(target=kafka_write, args='2')
+# thread2.start()
+#
+# # work well
+# print('sleep 15 sec')
+# sleep(15)
+# spark = SparkSession.builder.getOrCreate()
+# print(spark.streams.active[0].name)
+# print(spark.streams.active[1].name)
+# print('stop 2 stream')
+# [streamkfk.stop() for streamkfk in spark.streams.active if streamkfk.name == '2']
+#
+# print('NASTCH ---- NASTCH')
